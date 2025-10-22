@@ -1,5 +1,8 @@
 package com.marttapps.screenrotator.model.enums;
 
+/**
+ * 顯示器方向
+ */
 public enum WinDisplayModeOrientation {
 
 	/** 預設方向0度 */

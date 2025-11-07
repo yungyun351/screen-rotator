@@ -9,11 +9,11 @@ import com.sun.jna.Structure;
 		"dmDitherType", "dmReserved1", "dmReserved2", "dmPanningWidth", "dmPanningHeight" })
 public class WinDeviceMode extends Structure {
 
+	public short dmSize;
 
 	public byte[] dmDeviceName = new byte[32];
 	public short dmSpecVersion;
 	public short dmDriverVersion;
-	public short dmSize;
 	public short dmDriverExtra;
 	public int dmFields;
 
@@ -42,5 +42,9 @@ public class WinDeviceMode extends Structure {
 	public int dmReserved2;
 	public int dmPanningWidth;
 	public int dmPanningHeight;
+
+	public WinDeviceMode() {
+		dmSize = (short) size();
+	}
 
 }

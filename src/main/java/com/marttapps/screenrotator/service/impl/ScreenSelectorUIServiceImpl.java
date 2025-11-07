@@ -26,9 +26,9 @@ import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 
-import com.marttapps.screenrotator.model.bean.WinDisplayDevice;
+import com.marttapps.screenrotator.model.bean.DeviceInfo;
 import com.marttapps.screenrotator.model.enums.WinDisplayModeOrientation;
-import com.marttapps.screenrotator.service.ScreenRotatorService;
+import com.marttapps.screenrotator.service.DeviceService;
 import com.marttapps.screenrotator.service.ScreenSelectorUIService;
 import com.marttapps.screenrotator.service.StartupShortcutService;
 import com.marttapps.screenrotator.util.PathUtil;
@@ -59,11 +59,11 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 	}
 
 	private void addContent(JFrame frame) {
-		ScreenRotatorService screenRotatorService = ScreenRotatorService.INSTANCE;
+		DeviceService deviceService = DeviceService.INSTANCE;
 		StartupShortcutService startupShortcutService = StartupShortcutService.INSTANCE;
 
 		// 檢核裝置
-		List<WinDisplayDevice> devices = screenRotatorService.getDisplayDevice();
+		List<DeviceInfo> devices = deviceService.findDeviceInfo();
 		if (devices == null || devices.isEmpty()) {
 			JOptionPane.showMessageDialog(null, "未偵測到螢幕裝置");
 			return;
@@ -87,12 +87,25 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		labelSelectDevice.setFont(labelStyle);
 		screenRow.add(labelSelectDevice);
 
-		String[] screenOptions = devices.stream() //
-				.map(d -> new String(d.DeviceName).trim()) //
-				.toArray(String[]::new);
-		JComboBox<String> screenCombo = new JComboBox<>(screenOptions);
+		JComboBox<DeviceInfo> screenCombo = new JComboBox<>(devices.toArray(DeviceInfo[]::new));
 		screenCombo.setFont(contentStyle);
 		screenCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, screenCombo.getPreferredSize().height));
+		screenCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+			JLabel label = new JLabel();
+			if (value != null) {
+				String monitorDeviceID = value.getMonitorDeviceID();
+				String[] parts = monitorDeviceID.split("\\\\");
+				String text = String.format("%s (%s x %s)", parts[1], value.getWidth(), value.getHeight());
+				label.setText(text);
+				label.setFont(contentStyle);
+			}
+			if (isSelected) {
+				label.setBackground(list.getSelectionBackground());
+				label.setForeground(list.getSelectionForeground());
+				label.setOpaque(true);
+			}
+			return label;
+		});
 		screenRow.add(screenCombo);
 		contentPanel.add(screenRow);
 		contentPanel.add(Box.createVerticalStrut(10));
@@ -131,11 +144,8 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		rootPane.getActionMap().put(ACTION_F1_PRESSED, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				String selected = (String) screenCombo.getSelectedItem();
-				int orientation = screenRotatorService.getOrientation(selected);
-				// 逆時針旋轉 90 度
-				int nextOrientation = (orientation + 1) % 4;
-				screenRotatorService.rotate(selected, nextOrientation);
+				DeviceInfo selected = (DeviceInfo) screenCombo.getSelectedItem();
+				deviceService.rotatePre(selected.getDeviceName());
 			}
 		});
 		rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW) //
@@ -143,11 +153,8 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		rootPane.getActionMap().put(ACTION_F2_PRESSED, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				String selected = (String) screenCombo.getSelectedItem();
-				int orientation = screenRotatorService.getOrientation(selected);
-				// 順時針旋轉 90 度
-				int nextOrientation = (orientation + 3) % 4;
-				screenRotatorService.rotate(selected, nextOrientation);
+				DeviceInfo selected = (DeviceInfo) screenCombo.getSelectedItem();
+				deviceService.rotateNext(selected.getDeviceName());
 			}
 		});
 
@@ -179,10 +186,10 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		applyButton.setFont(buttonStyle);
 		applyButton.addActionListener(e -> {
 			// 螢幕旋轉
-			String deviceName = screenOptions[screenCombo.getSelectedIndex()];
+			String deviceName = ((DeviceInfo) screenCombo.getSelectedItem()).getDeviceName();
 			int orientation = ((WinDisplayModeOrientation) orientateCombo.getSelectedItem()).getCode();
 			try {
-				screenRotatorService.rotate(deviceName, orientation);
+				deviceService.rotate(deviceName, orientation);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 				JOptionPane.showMessageDialog(null, "旋轉失敗: " + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);

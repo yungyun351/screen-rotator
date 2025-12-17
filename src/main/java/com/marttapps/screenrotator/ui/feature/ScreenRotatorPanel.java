@@ -1,4 +1,4 @@
-package com.marttapps.screenrotator.service.impl;
+package com.marttapps.screenrotator.ui.feature;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -10,62 +10,68 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 
 import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import com.marttapps.screenrotator.model.bean.DeviceInfo;
 import com.marttapps.screenrotator.model.enums.WinDisplayModeOrientation;
 import com.marttapps.screenrotator.service.DeviceService;
-import com.marttapps.screenrotator.service.ScreenSelectorUIService;
 import com.marttapps.screenrotator.service.StartupShortcutService;
-import com.marttapps.screenrotator.util.PathUtil;
 import com.marttapps.screenrotator.util.ApplicationPropUtil;
+import com.marttapps.screenrotator.util.DialogUtil;
+import com.marttapps.screenrotator.util.PathUtil;
 
-public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
+public class ScreenRotatorPanel extends JPanel {
+
+	private static final long serialVersionUID = 1L;
 
 	/** 監聽事件id-F1 */
 	private static final String ACTION_F1_PRESSED = "f1-pressed";
 	/** 監聽事件id-F2 */
 	private static final String ACTION_F2_PRESSED = "f2-pressed";
 
-	@Override
-	public void init() {
-		JFrame frame = new JFrame("螢幕旋轉工具");
-		frame.setSize(400, 300);
-		frame.setVisible(true);
-		frame.setLayout(new BorderLayout(10, 10));
-		frame.setResizable(true);
-		frame.setLocationRelativeTo(null);
-		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+	private JComboBox<DeviceInfo> screenCombo;
 
-		ImageIcon icon = new ImageIcon(getClass().getResource("/img/icon.png"));
-		frame.setIconImage(icon.getImage());
-
-		addContent(frame);
-		frame.setVisible(true);
+	public ScreenRotatorPanel() {
+		super();
+		render();
 	}
 
-	private void addContent(JFrame frame) {
+	@Override
+	public void addNotify() {
+		super.addNotify();
+		registerKeyBinding();
+	}
+
+	@Override
+	public void removeNotify() {
+		unregisterKeyBinding();
+		super.removeNotify();
+	}
+
+	private void render() {
+		setLayout(new BorderLayout());
+
 		DeviceService deviceService = DeviceService.INSTANCE;
 		StartupShortcutService startupShortcutService = StartupShortcutService.INSTANCE;
 
 		// 檢核裝置
 		List<DeviceInfo> devices = deviceService.findDeviceInfo();
 		if (devices == null || devices.isEmpty()) {
-			JOptionPane.showMessageDialog(null, "未偵測到螢幕裝置");
+			DialogUtil.showInfoDialog("未偵測到螢幕裝置");
 			return;
 		}
 
@@ -87,7 +93,7 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		labelSelectDevice.setFont(labelStyle);
 		screenRow.add(labelSelectDevice);
 
-		JComboBox<DeviceInfo> screenCombo = new JComboBox<>(devices.toArray(DeviceInfo[]::new));
+		screenCombo = new JComboBox<>(devices.toArray(DeviceInfo[]::new));
 		screenCombo.setFont(contentStyle);
 		screenCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, screenCombo.getPreferredSize().height));
 		screenCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
@@ -138,7 +144,60 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 		contentPanel.add(Box.createVerticalStrut(10));
 
 		// 按F1逆時針旋轉 / 按F2逆時針旋轉
-		JRootPane rootPane = frame.getRootPane();
+		JPanel tipRow = new JPanel(new BorderLayout());
+		JLabel tipLabel = new JLabel("F1順時針旋轉 / F2逆時針旋轉", SwingConstants.CENTER);
+		tipLabel.setFont(tipStyle);
+		tipLabel.setForeground(Color.getHSBColor(Float.valueOf("32"), Float.valueOf("0.63"), Float.valueOf("0.87")));
+		tipRow.add(tipLabel, BorderLayout.CENTER);
+		contentPanel.add(tipRow);
+		contentPanel.add(Box.createVerticalStrut(10));
+
+		// 其餘設定
+		JPanel settingRow = new JPanel(new BorderLayout());
+		JCheckBox autoStartCheckbox = new JCheckBox("開機自動啟用系統匣");
+		String appName = ApplicationPropUtil.get("application", "name");
+		autoStartCheckbox.setSelected(startupShortcutService.isExist(appName));
+		settingRow.add(autoStartCheckbox);
+		contentPanel.add(settingRow);
+		contentPanel.add(Box.createVerticalStrut(10));
+
+		add(contentPanel, BorderLayout.CENTER);
+
+		// ----- 底部按鈕區 -----
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+		buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
+
+		JButton applyButton = new JButton("套用");
+		applyButton.setFont(buttonStyle);
+		applyButton.addActionListener(e -> {
+			// 螢幕旋轉
+			String deviceName = ((DeviceInfo) screenCombo.getSelectedItem()).getDeviceName();
+			int orientation = ((WinDisplayModeOrientation) orientateCombo.getSelectedItem()).getCode();
+			deviceService.rotate(deviceName, orientation);
+
+			// 開機自動啟用系統匣
+			if (autoStartCheckbox.isSelected()) {
+				startupShortcutService.add(appName, PathUtil.getCurrentExecutablePath());
+			} else {
+				startupShortcutService.remove(appName);
+			}
+		});
+		buttonPanel.add(applyButton);
+
+		add(buttonPanel, BorderLayout.SOUTH);
+	}
+
+	/**
+	 * 按F1逆時針旋轉 / 按F2逆時針旋轉
+	 */
+	private void registerKeyBinding() {
+		JRootPane rootPane = SwingUtilities.getRootPane(this);
+		if (rootPane == null)
+			return;
+
+		DeviceService deviceService = DeviceService.INSTANCE;
+
 		rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW) //
 				.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), ACTION_F1_PRESSED);
 		rootPane.getActionMap().put(ACTION_F1_PRESSED, new AbstractAction() {
@@ -157,61 +216,20 @@ public class ScreenSelectorUIServiceImpl implements ScreenSelectorUIService {
 				deviceService.rotateNext(selected.getDeviceName());
 			}
 		});
+	}
 
-		JPanel tipRow = new JPanel(new BorderLayout());
-		JLabel tipLabel = new JLabel("F1順時針旋轉 / F2逆時針旋轉", SwingConstants.CENTER);
-		tipLabel.setFont(tipStyle);
-		tipLabel.setForeground(Color.getHSBColor(Float.valueOf("32"), Float.valueOf("0.63"), Float.valueOf("0.87")));
-		tipRow.add(tipLabel, BorderLayout.CENTER);
-		contentPanel.add(tipRow);
-		contentPanel.add(Box.createVerticalStrut(10));
+	private void unregisterKeyBinding() {
+		JRootPane root = SwingUtilities.getRootPane(this);
+		if (root == null)
+			return;
 
-		// 其餘設定
-		JPanel settingRow = new JPanel(new BorderLayout());
-		JCheckBox autoStartCheckbox = new JCheckBox("開機自動啟用系統匣");
-		String appName = ApplicationPropUtil.get("application", "name");
-		autoStartCheckbox.setSelected(startupShortcutService.isExist(appName));
-		settingRow.add(autoStartCheckbox);
-		contentPanel.add(settingRow);
-		contentPanel.add(Box.createVerticalStrut(10));
+		InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+		ActionMap am = root.getActionMap();
 
-		frame.add(contentPanel, BorderLayout.CENTER);
-
-		// ----- 底部按鈕區 -----
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
-		buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
-
-		JButton applyButton = new JButton("套用");
-		applyButton.setFont(buttonStyle);
-		applyButton.addActionListener(e -> {
-			// 螢幕旋轉
-			String deviceName = ((DeviceInfo) screenCombo.getSelectedItem()).getDeviceName();
-			int orientation = ((WinDisplayModeOrientation) orientateCombo.getSelectedItem()).getCode();
-			try {
-				deviceService.rotate(deviceName, orientation);
-			} catch (Exception ex) {
-				ex.printStackTrace();
-				JOptionPane.showMessageDialog(null, "旋轉失敗: " + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
-			}
-
-			// 開機自動啟用系統匣
-			if (autoStartCheckbox.isSelected()) {
-				startupShortcutService.add(appName, PathUtil.getCurrentExecutablePath());
-			} else {
-				startupShortcutService.remove(appName);
-			}
-		});
-		buttonPanel.add(applyButton);
-
-		// 關閉
-		JButton closeButton = new JButton("關閉");
-		closeButton.setFont(buttonStyle);
-		closeButton.setBackground(Color.DARK_GRAY);
-		closeButton.addActionListener(e -> frame.dispose());
-		buttonPanel.add(closeButton);
-
-		frame.add(buttonPanel, BorderLayout.SOUTH);
+		im.remove(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+		im.remove(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0));
+		am.remove(ACTION_F1_PRESSED);
+		am.remove(ACTION_F2_PRESSED);
 	}
 
 }

@@ -2,6 +2,7 @@ package com.marttapps.screenrotator.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.marttapps.screenrotator.model.bean.DeviceInfo;
 import com.marttapps.screenrotator.model.bean.WinDeviceMode;
@@ -35,7 +36,10 @@ public class DeviceServiceImpl implements DeviceService {
 			String deviceName = new String(displayDevice.DeviceName);
 			WinDisplayDevice monitorDevice = new WinDisplayDevice();
 			winUser32Service.EnumDisplayDevicesA(deviceName, 0, monitorDevice, 0);
-			WinDeviceMode deviceMode = findDeviceMode(deviceName);
+			WinDeviceMode deviceMode = findDeviceMode(deviceName).orElse(null);
+			if (deviceMode == null)
+				continue;
+
 			DeviceInfo deviceInfo = convertDeviceInfo(displayDevice, monitorDevice, deviceMode);
 			result.add(deviceInfo);
 		}
@@ -44,7 +48,7 @@ public class DeviceServiceImpl implements DeviceService {
 
 	@Override
 	public void rotate(String deviceName, int orientation) {
-		WinDeviceMode dm = findDeviceMode(deviceName);
+		WinDeviceMode dm = findDeviceMode(deviceName).orElse(null);
 		if (dm == null)
 			return;
 
@@ -53,7 +57,7 @@ public class DeviceServiceImpl implements DeviceService {
 
 	@Override
 	public void rotateNext(String deviceName) {
-		WinDeviceMode dm = findDeviceMode(deviceName);
+		WinDeviceMode dm = findDeviceMode(deviceName).orElse(null);
 		if (dm == null)
 			return;
 
@@ -63,7 +67,7 @@ public class DeviceServiceImpl implements DeviceService {
 
 	@Override
 	public void rotatePre(String deviceName) {
-		WinDeviceMode dm = findDeviceMode(deviceName);
+		WinDeviceMode dm = findDeviceMode(deviceName).orElse(null);
 		if (dm == null)
 			return;
 
@@ -71,10 +75,10 @@ public class DeviceServiceImpl implements DeviceService {
 		rotate(deviceName, dm, nextOrientation);
 	}
 
-	private WinDeviceMode findDeviceMode(String deviceName) {
+	private Optional<WinDeviceMode> findDeviceMode(String deviceName) {
 		WinDeviceMode dm = new WinDeviceMode();
 		return WinUser32Service.INSTANCE.EnumDisplaySettingsA(deviceName, -1, dm) ? //
-				dm : null;
+				Optional.of(dm) : Optional.empty();
 	}
 
 	private DeviceInfo convertDeviceInfo(WinDisplayDevice displayDevice, WinDisplayDevice monitorDevice,
@@ -94,7 +98,7 @@ public class DeviceServiceImpl implements DeviceService {
 			return;
 
 		if (deviceMode == null) {
-			deviceMode = findDeviceMode(deviceName);
+			deviceMode = findDeviceMode(deviceName).orElse(null);
 			if (deviceMode == null)
 				return;
 		}
@@ -111,12 +115,7 @@ public class DeviceServiceImpl implements DeviceService {
 		deviceMode.dmDisplayOrientation = orientation;
 		deviceMode.dmFields |= WinDisplayConstants.DEVICE_MODE_FIELDS_DISPLAYORIENTATION;
 
-		int result = WinUser32Service.INSTANCE.ChangeDisplaySettingsExA(deviceName, deviceMode, null, 0, null);
-		if (result == 0) {
-			System.out.println("Display rotation successful!");
-		} else {
-			System.out.println("Failed to rotate display. Error code: " + result);
-		}
+		WinUser32Service.INSTANCE.ChangeDisplaySettingsExA(deviceName, deviceMode, null, 0, null);
 	}
 
 }

@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import com.marttapps.screenrotator.service.StartupShortcutService;
 
@@ -50,8 +51,10 @@ public class StartupShortcutServiceImpl implements StartupShortcutService {
 	@Override
 	public void remove(String fileName) {
 		File shortcut = new File(getShortcutPath(fileName));
-		if (shortcut.exists()) {
-			shortcut.delete();
+		try {
+			Files.deleteIfExists(shortcut.toPath());
+		} catch (IOException ignore) {
+			// ignore
 		}
 	}
 

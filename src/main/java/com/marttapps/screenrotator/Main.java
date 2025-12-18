@@ -1,11 +1,16 @@
 package com.marttapps.screenrotator;
 
-import com.marttapps.screenrotator.service.TrayAppService;
+import java.util.Locale;
+
+import javax.swing.SwingUtilities;
 
 public class Main {
 
 	public static void main(String[] args) {
-		TrayAppService.INSTANCE.init();
+		SwingUtilities.invokeLater(() -> new App() //
+				.initLocale(Locale.TRADITIONAL_CHINESE) //
+				.initTheme("/theme/Cobalt_2.theme.json") //
+				.launch());
 	}
 
 }

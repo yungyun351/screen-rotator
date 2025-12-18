@@ -9,7 +9,7 @@ import org.yaml.snakeyaml.Yaml;
 public class ApplicationPropUtil {
 
 	private ApplicationPropUtil() {
-		throw new UnsupportedOperationException("Utility class should not be instantiated");
+		throw new UnsupportedOperationException("Class should not be instantiated");
 	}
 
 	private static final Map<String, Object> root = new HashMap<>();

@@ -5,7 +5,7 @@ import com.marttapps.screenrotator.service.WinKernel32Service;
 public class PathUtil {
 
 	private PathUtil() {
-		throw new UnsupportedOperationException("Utility class should not be instantiated");
+		throw new UnsupportedOperationException("Class should not be instantiated");
 	}
 
 	public static String getCurrentExecutablePath() {

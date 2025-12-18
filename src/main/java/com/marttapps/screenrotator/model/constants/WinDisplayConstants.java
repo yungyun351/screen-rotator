@@ -2,6 +2,10 @@ package com.marttapps.screenrotator.model.constants;
 
 public class WinDisplayConstants {
 
+	private WinDisplayConstants() {
+		throw new UnsupportedOperationException("Class should not be instantiated");
+	}
+
 	/** 螢幕方向 */
 	public static final int DEVICE_MODE_FIELDS_DISPLAYORIENTATION = 0x80;
 	/** 螢幕寬度(像素) */

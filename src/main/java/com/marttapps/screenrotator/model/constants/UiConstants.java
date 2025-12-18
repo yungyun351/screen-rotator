@@ -15,10 +15,4 @@ public class UiConstants {
 	/** 預設字體大小 */
 	public static final int STYLE_DEFAULT_FONT_SIZE = 16;
 
-	/** 目錄圖示 */
-	public static final String ICON_DIRECTORY = "FileView.directoryIcon";
-
-	/** 前景文字 */
-	public static final String LABEL_FOREGROUND = "Label.foreground";
-
 }
